@@ -1,4 +1,5 @@
 // scope: requires dom
+// i consider XMLHttpRequest apart of the dom
 
 // rev2 - https://gist.github.com/Noitidart/59ee6c306fa493a4f35fb122bcf13e99
 function getBrowser() {

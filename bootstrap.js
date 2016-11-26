@@ -1,8 +1,14 @@
 // scope: bootstrap.js of firefox addons
-// required imports:
-	// Cu.import('resource://gre/modules/Timer.jsm');
-	// Cu.import('resource://gre/modules/osfile.jsm');
+// collection requirements
+// Cc
+// Ci
+// Cu
+// Cu.import('resource://gre/modules/Timer.jsm');
+// Cu.import('resource://gre/modules/osfile.jsm');
+// Cu.import('resource://gre/modules/AddonManager.jsm')
 
+// REQUIREMENTS:
+// Ci
 function getNativeHandlePtrStr(aDOMWindow) {
 	let aDOMBaseWindow = aDOMWindow.QueryInterface(Ci.nsIInterfaceRequestor)
 								   .getInterface(Ci.nsIWebNavigation)
@@ -13,6 +19,8 @@ function getNativeHandlePtrStr(aDOMWindow) {
 	return aDOMBaseWindow.nativeHandle;
 }
 
+// REQUIREMENTS
+// Cu
 let gRequirers = {};
 let gRequireds = {};
 function lazyRequire(type, path, exportedas) {
@@ -47,6 +55,8 @@ function lazyRequire(type, path, exportedas) {
 }
 
 // TODO: not yet comitted - rev3 - https://gist.github.com/Noitidart/5257376b54935556173e8d13c2821f4e
+// REQUIREMENTS
+// Cu.import('resource://gre/modules/osfile.jsm');
 async function writeThenDirMT(path, contents, from, opt={}) {
 	// path - platform path of file to write
 	// from - platform path of dir to make from
@@ -82,6 +92,9 @@ async function writeThenDirMT(path, contents, from, opt={}) {
 	}
 }
 
+// REQUIREMENTS
+// Cc
+// Ci
 function xhrSync(url, opt={}) {
 	const optdefault = {
 		responseType: 'text',
@@ -99,6 +112,8 @@ function xhrSync(url, opt={}) {
 	return xhreq;
 }
 
+// REQUIREMENTS
+// Cu.import('resource://gre/modules/Services.jsm');
 function getXPrefs(aArgs) {
 	let { nametypes } = aArgs;
 	let rez = {};
@@ -139,6 +154,8 @@ function getXPrefs(aArgs) {
 	return rez;
 }
 
+// REQUIREMENTS
+// Cu.import('resource://gre/modules/Services.jsm');
 function setXPrefs(aArgs) {
 	let { namevals } = aArgs;
 	// namevals should be object { [pref_string]:pref_value }
@@ -167,6 +184,8 @@ function setXPrefs(aArgs) {
 	}
 }
 
+// REQUIREMENTS
+// Cu.import('resource://gre/modules/AddonManager.jsm')
 function setApplyBackgroundUpdates(aNewApplyBackgroundUpdates) {
 	// 0 - off, 1 - respect global setting, 2 - on
 	AddonManager.getAddonByID(SELFID, addon =>
@@ -174,6 +193,8 @@ function setApplyBackgroundUpdates(aNewApplyBackgroundUpdates) {
 	);
 }
 
+// REQUIREMENTS
+// Cu.import('resource://gre/modules/AddonManager.jsm')
 async function getAddonInfo(aAddonId=SELFID) {
 	return await new Promise(resolve =>
 		AddonManager.getAddonByID(aAddonId, addon =>

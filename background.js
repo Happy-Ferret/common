@@ -1,5 +1,77 @@
 //scope: webextension background.js
+// REbrowser.*** instead of chrome.***
+// collection requirements:
+// global `nub.stg = {}`
+// global `nub.path.locales = path to _locales`
+// all.js - findClosestLocale
+// messages.json in _locales/** directories
+
+// REQUIREMENTS:
+// all.js - findClosestLocale
+async function getClosestAvailableLocale() {
+	// gets the locale available in my extension, that is closest to the users locale
+	// returns null if nothing close
+
+	// lower case things because thats what findClosestLocale needs
+	let extlocales = await getExtLocales(); // these are the available locales
+
+	let userlocale_preferred = browser.i18n.getUILanguage(); // same as `browser.i18n.getMessage('@@ui_locale')`
+	let userlocale_lesspreferred = await browser.i18n.getAcceptLanguages();
+
+	let available = extlocales.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
+	let wanted = [userlocale_preferred, ...userlocale_lesspreferred]; // in order of priority
+	wanted = [...new Set(wanted)]; // filter duplicates from wanted
+	wanted = wanted.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
+
+	let closest = findClosestLocale(available, wanted);
+	if (closest)
+		return extlocales.find(el => el.toLowerCase() == closest); // return proper casing
+	else
+		return null;
+}
+
+// REQUIREMENTS:
+// global `nub.path.locales = path to _locales`
+async function getExtLocales() {
+	let { xhr:{response} } = await xhrPromise(nub.path.locales); // TODO: maybe i can make it so not rely on nub.path.locales and just use "_locales", i think xhr are relative in webext
+
+	let locales = [];
+	let match, patt = /^.*? ([a-z\-]+)\//img;
+	while (match = patt.exec(response))
+		locales.push(match[1]);
+
+	return locales;
+}
+
+// REQUIREMENTS
+// global `nub.path.locales`
+// messages.json in _locales/** directories
+async function getSelectedLocale(testkey) {
+	// returns the locale in my extension, that is being used by the browser, to display my extension stuff
+	// testkey - string of key common to all messages.json files - will collect this message from each of the extlocales, then see what browser.i18n.getMessage(testkey) is equal to
+	// REQUIRED: pick a `testkey` that has a unique value in each message.json file
+
+	let extlocales = await getExtLocales();
+
+	let errors = [];
+	let msgs = {}; // localized_messages `[messages.json[testkey]]: extlocale`
+	for (let extlocale of extlocales) {
+		let msg = (await xhrPromise(nub.path.locales + extlocale + '/messages.json', { restype:'json' })).xhr.response[testkey]; // TODO: try using relative "_locales" path so no reliance on nub.path.locales
+
+		if (msg in msgs)
+			errors.push(`* messages.json for locale "${extlocale}" has the same "message" as locale ${msgs[msg]} for \`testkey\`("${testkey}")`);
+		else
+			msgs[msg] = extlocale;
+	}
+
+	if (errors.length) throw 'ERROR(getSelectedLocale):\n' + errors.join('\n');
+
+	return msgs[browser.i18n.getMessage(testkey)];
+}
+
 // rev3 - not yet comit - https://gist.github.com/Noitidart/bcb964207ac370d3301720f3d5c9eb2b
+// REQUIREMENTS:
+// global `nub.stg = {}`
 var _storagecall_pendingset = {};
 var _storagecall_callid = 1;
 function storageCall(aArea, aAction, aKeys, aOptions) {
