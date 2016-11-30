@@ -68,14 +68,14 @@ function findClosestLocale(aLocales, aMatchLocales) {
   let bestpartcount = 0;
 
   for (let locale of aMatchLocales) {
-    let lparts = locale.split("-");
+    let lparts = locale.split(/[-_]/);
     for (let localized of aLocales) {
       let found = localized.toLowerCase();
       // Exact match is returned immediately
       if (locale == found)
         return localized;
 
-      let fparts = found.split("-");
+      let fparts = found.split(/[-_]/);
       /* If we have found a possible match and this one isn't any longer
          then we dont need to check further. */
       if (bestmatch && fparts.length < bestmatchcount)
