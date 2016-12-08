@@ -44,6 +44,14 @@ async function doRetries(retry_ms, retry_cnt, callback) {
 	}
 }
 
+function escapeRegExp(text) {
+	if (!arguments.callee.sRE) {
+		var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+		arguments.callee.sRE = new RegExp('(\\' + specials.join('|\\') + ')', 'g');
+	}
+	return text.replace(arguments.callee.sRE, '\\$1');
+}
+
 // rev3 - https://gist.github.com/Noitidart/110c2f859db62398ae76069f4a6c5642
 /**
  * Selects the closest matching locale from a list of locales.
