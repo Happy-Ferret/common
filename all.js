@@ -20,6 +20,24 @@ function compareIntThenLex(a, b) {
     }
 }
 
+function dedupeCaseInsensitive(arr) {
+  // removes duplicates in array. case insensitively.
+  // based on "Hashtables to the rescue" - http://stackoverflow.com/a/9229821/1828637
+  let ixlast = arr.length - 1;
+  return arr.reduce(
+    (acc, el, ix) => {
+      let el_low = el.toLowerCase();
+      let { seen, filtered } = acc;
+      if (!seen.hasOwnProperty(el_low)) {
+        seen[el_low] = true;
+        filtered.push(el);
+      }
+      return ix === ixlast ? filtered : acc;
+    },
+    { seen:{}, filtered:[] }
+  );
+}
+
 function deepAccessUsingString(obj, key){
 	// https://medium.com/@chekofif/using-es6-s-proxy-for-safe-object-property-access-f42fa4380b2c#.xotsyhx8t
   return key.split('.').reduce((nestedObject, key) => {
