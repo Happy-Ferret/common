@@ -2,9 +2,22 @@
 // REbrowser.*** instead of chrome.***
 // collection requirements:
 // global `nub.stg = {}`
-// global `nub.path.locales = path to _locales`
+// _locales/[LOCALE_TAG]/ directories
 // all.js - findClosestLocale
 // messages.json in _locales/** directories
+
+// REQUIREMENTS:
+// all.js - dedupeCaseInsensitive
+async function getUserPreferredLocales() {
+  // returns an array with the locales of the user. first entry is most highly preferred. after that is less
+  let userlocale_preferred = browser.i18n.getUILanguage(); // same as `browser.i18n.getMessage('@@ui_locale')`
+  let userlocale_lesspreferred = await browser.i18n.getAcceptLanguages();
+
+  let userlocales = [userlocale_preferred, ...userlocale_lesspreferred];
+
+  // remove duplicates, case insensitively
+  return dedupeCaseInsensitive(userlocales);
+}
 
 // REQUIREMENTS:
 // all.js - findClosestLocale
@@ -14,26 +27,18 @@ async function getClosestAvailableLocale() {
 
 	// lower case things because thats what findClosestLocale needs
 	let extlocales = await getExtLocales(); // these are the available locales
+  let userlocales = await getUserPreferredLocales();
 
-	let userlocale_preferred = browser.i18n.getUILanguage(); // same as `browser.i18n.getMessage('@@ui_locale')`
-	let userlocale_lesspreferred = await browser.i18n.getAcceptLanguages();
+	let available = extlocales;
+	let wanted = userlocales.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
 
-	let available = extlocales.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
-	let wanted = [userlocale_preferred, ...userlocale_lesspreferred]; // in order of priority
-	wanted = [...new Set(wanted)]; // filter duplicates from wanted
-	wanted = wanted.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
-
-	let closest = findClosestLocale(available, wanted);
-	if (closest)
-		return extlocales.find(el => el.toLowerCase() == closest); // return proper casing
-	else
-		return null;
+	return findClosestLocale(available, wanted); // returns `null` if not found
 }
 
 // REQUIREMENTS:
-// global `nub.path.locales = path to _locales`
+// _locales/[LOCALE_TAG]/ directories
 async function getExtLocales() {
-	let { xhr:{response} } = await xhrPromise(nub.path.locales); // TODO: maybe i can make it so not rely on nub.path.locales and just use "_locales", i think xhr are relative in webext
+	let { xhr:{response} } = await xhrPromise('_locales/');
 
 	let locales = [];
 	let match, patt = /^.*? ([a-z\-]+)\//img;
@@ -44,24 +49,20 @@ async function getExtLocales() {
 }
 
 // REQUIREMENTS
-// global `nub.path.locales`
 // messages.json in _locales/** directories
 async function getSelectedLocale(testkey) {
 	// returns the locale in my extension, that is being used by the browser, to display my extension stuff
 	// testkey - string of key common to all messages.json files - will collect this message from each of the extlocales, then see what browser.i18n.getMessage(testkey) is equal to
 	// REQUIRED: pick a `testkey` that has a unique value in each message.json file
-
 	let extlocales = await getExtLocales();
 
 	let errors = [];
 	let msgs = {}; // localized_messages `[messages.json[testkey]]: extlocale`
 	for (let extlocale of extlocales) {
-		let msg = (await xhrPromise(nub.path.locales + extlocale + '/messages.json', { restype:'json' })).xhr.response[testkey]; // TODO: try using relative "_locales" path so no reliance on nub.path.locales
-
-		if (msg in msgs)
-			errors.push(`* messages.json for locale "${extlocale}" has the same "message" as locale ${msgs[msg]} for \`testkey\`("${testkey}")`);
-		else
-			msgs[msg] = extlocale;
+		let msg = (await xhrPromise('_locales/' + extlocale + '/messages.json', { restype:'json' })).xhr.response[testkey].message;
+    
+		if (msg in msgs) errors.push(`* messages.json for locale "${extlocale}" has the same "message" as locale ${msgs[msg]} for \`testkey\`("${testkey}")`);
+		else msgs[msg] = extlocale;
 	}
 
 	if (errors.length) throw 'ERROR(getSelectedLocale):\n' + errors.join('\n');
