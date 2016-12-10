@@ -62,7 +62,13 @@ var InputNumber = React.createClass({
     }
   },
   onWheel(e) {
-    this.crementBy(e.deltaY < 0 ? 0 : -0);
+    let { deltaX:x, deltaY:y, deltaZ:z } = e;
+    console.log('wheel delta', 'x:', x, 'y:', y, 'z:', z);
+
+    if (y) this.crementBy(y < 0 ? 0 : -0); // up/dn = increment/decrement
+    else if (x) this.crementBy(x > 0 ? 0 : -0); // right/left = increment/decrement
+    else this.crementBy(z < 0 ? 0 : -0); // guess
+
     e.stopPropagation();
     e.preventDefault();
   },
@@ -78,7 +84,8 @@ var InputNumber = React.createClass({
     this.drginfo = {
       value_st: value,
       dimension,
-      position_st: e[dimension]
+      position_st: e[dimension],
+      firstdrag: true
     };
     console.log('setting into drag, drginfo:', this.drginfo);
     this.setState({dragging:1}); // TODO: even if invalid value, dragging will set it to min or max
@@ -89,14 +96,43 @@ var InputNumber = React.createClass({
     delete this.drginfo;
   },
   onDrag(e) {
-    let { dimension, position_st, value_st } = this.drginfo;
+    let { dimension, position_st, value_st, firstdrag } = this.drginfo;
     let { sensitivty=10, crement=1, max, min } = this.props; // link199288 link266622
     let { value, dragging } = this.state;
     let position_delta = dimension.endsWith('Y') ? position_st - e[dimension] : e[dimension] - position_st; // so up/dn means increment/decrement and right/left means increment/decrement
     let value_delta = Math.round(position_delta / sensitivty) * crement;
     // console.log('position_delta:', position_delta, 'value_delta:', value_delta);
-    // TODO: if by_orig === 0 then maybe if over max, set to max, and if under min set to min?
+
+    if (firstdrag) {
+      delete this.drginfo.firstdrag;
+
+      if (isNaN(value_st) || !value_st.trim().length) {
+        console.warn('position_delta:', position_delta);
+        if (position_delta > 0) {
+          // going up, so start at min
+          if (min !== undefined) value_st = min;
+          else if (max !== undefined) value_st = max;
+          else value_st = 0;
+        } else {
+          // user going down, so start at max
+          if (max !== undefined) value_st = max;
+          else if (min !== undefined) value_st = min;
+          else value_st = 0;
+        }
+
+        this.drginfo.value_st = value_st;
+
+        this.setState({
+          // dragging: 1, // no need for this as firstdrag starts at 1
+          value: value_st
+        });
+
+        return;
+      }
+    }
+
     let newvalue = value_st + value_delta;
+
     // if (isTestMax() isTestOverMax()) == if (isTestMaxish())
 
     let newdragging = 1;
@@ -108,14 +144,6 @@ var InputNumber = React.createClass({
       newdragging = -1;
       newvalue = min;
     }
-    // // TODO: if invalid chars in newvalue - this method doesnt work
-    // if (!this.isTestValid(newvalue)) {
-    //   if (position_delta > 0) {
-    //     newvalue = max !== undefined ? max : 0;
-    //   } else {
-    //     newvalue = min !== undefined ? min : 0;
-    //   }
-    // }
 
     // console.log('value vs newvalue', value, newvalue);
     if (value !== newvalue || dragging !== newdragging) {
@@ -162,10 +190,8 @@ var InputNumber = React.createClass({
     this.timer = setTimeout(()=>this.timedCrement(by), Math.max(this.timerintvl_max / (2 * this.timerstep), this.timerintvl_min));
   },
   timedCrementStop() {
-    console.error('stopping timedCrement');
     if ('timer' in this) {
       clearTimeout(this.timer);
-      console.error('stopped');
       delete this.timer;
       delete this.timerstep;
     }
@@ -181,7 +207,7 @@ var InputNumber = React.createClass({
 
     if (by === 0) {
       by = 1/by === -Infinity ? -crement : crement;
-      if (isNaN(value)) {
+      if (isNaN(value) || (typeof(value) == 'string' && !value.trim().length)) {
         if (by === -crement) {
           return this.crementTo(min !== undefined ? min : 0)
         } else { // it is === crement
@@ -213,7 +239,7 @@ var InputNumber = React.createClass({
     // let { min, max } = this;
     // if (min !== undefined && num < min) { console.log('less then min'); return false; }
     // if (max !== undefined && num > max) { console.log('more then max'); return false; }
-    if (!str.length) return false;
+    if (!str.trim().length) return false;
     if (isNaN(str)) return false;
     if (!str.trim().length) return false;
     let num = parseInt(str);
