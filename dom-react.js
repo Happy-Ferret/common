@@ -61,13 +61,9 @@ var InputNumber = React.createClass({
     }
   },
   onWheel(e) {
-    let { deltaY } = e;
-
-    if (deltaY < 0) {
-			newValue = this.value + this.progProps.crement;
-		} else {
-			newValue = this.value - this.progProps.crement;
-		}
+    this.crementBy(e.deltaY < 0 ? 0 : -0);
+    e.stopPropagation();
+    e.preventDefault();
   },
   onTextChange(e) {
     this.setState({ value:e.target.value });
@@ -90,6 +86,27 @@ var InputNumber = React.createClass({
             this.crementBy(-0);
           break;
       }
+    }
+  },
+  timerintvl_max: 500,
+  timerintvl_min: 30,
+  timedCrement(by) {
+    // aka timedCrementStart
+    if (!('timer' in this)) {
+      // first call
+      this.timerstep = 0;
+    }
+    this.crementBy(by);
+    this.timerstep++;
+    this.timer = setTimeout(()=>this.timedCrement(by), Math.max(this.timerintvl_max / (2 * this.timerstep), this.timerintvl_min));
+  },
+  timedCrementStop() {
+    console.error('stopping timedCrement');
+    if ('timer' in this) {
+      clearTimeout(this.timer);
+      console.error('stopped');
+      delete this.timer;
+      delete this.timerstep;
     }
   },
   crementBy(by) {
@@ -209,15 +226,15 @@ var InputNumber = React.createClass({
       value,
       onChange: this.onTextChange,
       onKeyDown: this.onTextKeyDown,
-      maxLength: this.maxlen
+      maxLength: this.maxlen,
+      onWheel: this.onWheel
     };
-    let domprops_mouseable = { style:{cursor} };
+    let domprops_mouseable = { style:{cursor}, onWheel:this.onWheel };
 
     let isvalid = this.isValid();
     let isminish = this.isMinish();
     let ismaxish = this.isMaxish();
-
     // component should set `wheelable#` `draggable#` or `allable#` - the input element will by default be wheelable
-    return React.createElement(component, { ref:'component', ...other, crementBy:this.crementBy, crementTo:this.crementTo, isvalid, ismaxish, isminish, domprops_text, domprops_mouseable });
+    return React.createElement(component, { ref:'component', ...other, crementBy:this.crementBy, crementTo:this.crementTo, timedCrement:this.timedCrement, timedCrementStop:this.timedCrementStop, isvalid, ismaxish, isminish, domprops_text, domprops_mouseable });
   }
 });
