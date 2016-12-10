@@ -247,7 +247,7 @@ var InputNumber = React.createClass({
     // does not support negative or decimal
     if (typeof(val) == 'string') {
       if (!val.trim().length) return null;
-      val = /\d+/.exec(val);
+      val = /-?\d+/.exec(val);
       // can consider doing just `val = parseInt(val)`
       if (!val) return null;
     } else if (val === null) {
