@@ -1,6 +1,5 @@
 // scope: requires react-with-addons (either production or dev)
 
-// react transition setuper
 // REQUIREMENTS:
 // dom.js - stopClickAndCheck0
 // var gTrans = [] setup on your side. `var` so i can access from here (dom-react.js)
@@ -50,7 +49,8 @@ function initTransTimingStylesheet() {
 	document.head.appendChild(style);
 }
 
-///// InputNumber
+// REQUIREMENTS
+// dom.js - stopClickAndCheck0
 var InputNumber = React.createClass({
   displayName: 'InputNumber',
   getInitialState() {
