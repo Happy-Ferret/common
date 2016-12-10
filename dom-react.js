@@ -63,7 +63,7 @@ var InputNumber = React.createClass({
   },
   onWheel(e) {
     let { deltaX:x, deltaY:y, deltaZ:z } = e;
-    console.log('wheel delta', 'x:', x, 'y:', y, 'z:', z);
+    // console.log('wheel delta', 'x:', x, 'y:', y, 'z:', z);
 
     if (y) this.crementBy(y < 0 ? 0 : -0); // up/dn = increment/decrement
     else if (x) this.crementBy(x > 0 ? 0 : -0); // right/left = increment/decrement
@@ -108,6 +108,7 @@ var InputNumber = React.createClass({
 
       if (isNaN(value_st) || !value_st.trim().length) {
         console.warn('position_delta:', position_delta);
+        // null recovery triple if is link848477
         if (position_delta > 0) {
           // going up, so start at min
           if (min !== undefined) value_st = min;
@@ -133,14 +134,12 @@ var InputNumber = React.createClass({
 
     let newvalue = value_st + value_delta;
 
-    // if (isTestMax() isTestOverMax()) == if (isTestMaxish())
-
     let newdragging = 1;
-    if (this.isTestOverMax(newvalue)) {
+    if (this.isOverMax(newvalue)) {
       newdragging = -1;
       newvalue = max;
     }
-    if (this.isTestUnderMin(newvalue)) {
+    if (this.isUnderMin(newvalue)) {
       newdragging = -1;
       newvalue = min;
     }
@@ -203,102 +202,124 @@ var InputNumber = React.createClass({
     // passing 0 to `by` is special, as it will respect min/max if it has it
     let { value } = this.state;
     let { crement=1, min, max } = this.props; // link266622
-    // if (isTestValid(value)) return false; // TODO: validation here?
 
+    value = this.getNumber(value);
+
+    let by_orig = by;
     if (by === 0) {
       by = 1/by === -Infinity ? -crement : crement;
-      if (isNaN(value) || (typeof(value) == 'string' && !value.trim().length)) {
+      if (value === null) {
+        // null recovery triple if is link848477
         if (by === -crement) {
-          return this.crementTo(min !== undefined ? min : 0)
+          if (max !== undefined) return this.crementTo(max);
+          else if (min !== undefined) return this.crementTo(min);
+          else return this.crementTo(0);
         } else { // it is === crement
-          return this.crementTo(max !== undefined ? max : 0)
+          if (min !== undefined) return this.crementTo(min);
+          else if (max !== undefined) return this.crementTo(max);
+          else return this.crementTo(0);
         }
       } else if (this.isUnderMin()) { // means it has a min
         return this.crementTo(min);
       } else if (this.isOverMax()) { // means it has a max
         return this.crementTo(max);
       }
+    } else if (value === null) {
+      // as it is not a number, i cant do any math on it
+      return;
     }
 
-    let newvalue = parseInt(value) + by;
-    if (this.isTestValid(newvalue))
-      this.setState({ value:newvalue });
+    let newvalue = value + by;
+
+    if (by_orig === 0 && this.isInvalid(newvalue)) return; // only if by_orig was 0/-0, this is special validation check as i think thats what devuser would expect for auto handling, test if is within min/max as we know for sure it is a number already due to checks above
+
+    this.setState({ value:newvalue });
   },
   crementTo(to) {
     // passed to component
     // set value to
-    let newvalue = parseInt(to);
+    let newvalue = this.getNumber(to);
     this.setState({ value:newvalue });
   },
-  isTestValid(str) {
-    if (typeof(str) == 'number') str = str + '';
-    // if (!str.length) { console.log('no length'); return false; }
-    // if (isNaN(str)) { console.log('str nan'); return false; }
-    // if (!str.trim().length) { console.log('str trim no len'); return false; }
-    // let num = parseInt(str);
-    // let { min, max } = this;
-    // if (min !== undefined && num < min) { console.log('less then min'); return false; }
-    // if (max !== undefined && num > max) { console.log('more then max'); return false; }
-    if (!str.trim().length) return false;
-    if (isNaN(str)) return false;
-    if (!str.trim().length) return false;
-    let num = parseInt(str);
+  getNumber(val) {
+    // returns number or null
+    // val should be string or number
+    // does not support negative or decimal
+    if (typeof(val) == 'string') {
+      if (!val.trim().length) return null;
+      val = /\d+/.exec(val);
+      // can consider doing just `val = parseInt(val)`
+      if (!val) return null;
+    } else if (val === null) {
+      return null;
+    }
+    if (isNaN(val)) return null;
+    // isNaN(null) is false - so if i dont do the val === null check above, parseInt(NaN) returns NaN
+    return parseInt(val);
+  },
+  isInvalid(val=this.state.value) {
+    // returns null if `isvalid` string;enum[IS_BLANK,NOT_NUMBER, RANGE_UNDER_MIN, RANGE_OVER_MAX]
+
+    const NOT_NUMBER = 'NOT_NUMBER';
+    const IS_BLANK = 'IS_BLANK';
+    const RANGE_UNDER_MIN = 'RANGE_UNDER_MIN';
+    const RANGE_OVER_MAX = 'RANGE_OVER_MAX';
+
+    window.isInvalid = this.isInvalid;
+    console.log('isInvalid testing val:', '"' + val + '"');
+
+    if (typeof(val) == 'string' && !val.trim().length) return IS_BLANK;
+
+    val = this.getNumber(val);
+    if (val === null) return NOT_NUMBER;
+
     let { min, max } = this.props;
-    if (min !== undefined && num < min) return false;
-    if (max !== undefined && num > max) return false;
-    return true;
+    if (min !== undefined && val < min) return RANGE_UNDER_MIN;
+    if (max !== undefined && val > max) return RANGE_OVER_MAX;
+
+    return null;
   },
-  isValid() {
-    let { value } = this.state;
-    console.log('tested validity of value:', value, this.isTestValid(value));
-    return this.isTestValid(value);
-  },
-  isTestMinish(num) {
+  isMinish(val=this.state.value) {
+    // returns bool
     let { min } = this.props;
     if (min === undefined) return false;
-    if (isNaN(num)) return false;
-    return parseInt(num) <= min ? true : false;
+    val = this.getNumber(val);
+    if (val === null) return false;
+    return val <= min ? true : false;
   },
-  isMinish() {
-    let { value } = this.state;
-    return this.isTestMinish(value);
-  },
-  isTestUnderMin(num) {
+  isUnderMin(val=this.state.value) {
+    // returns bool
     let { min } = this.props;
     if (min === undefined) return false;
-    if (isNaN(num)) return false;
-    return parseInt(num) < min ? true : false;
+    val = this.getNumber(val);
+    if (val === null) return false;
+    return val < min ? true : false;
   },
-  isUnderMin() {
-    let { value } = this.state;
-    return this.isTestUnderMin(value);
-  },
-  isTestMaxish(num) {
+  isMaxish(val=this.state.value) {
+    // returns bool
     let { max } = this.props;
     if (max === undefined) return false;
-    if (isNaN(num)) return false;
-    return parseInt(num) >= max ? true : false;
+    val = this.getNumber(val);
+    if (val === null) return false;
+    return val >= max ? true : false;
   },
-  isMaxish() {
-    let { value } = this.state;
-    return this.isTestMaxish(value);
-  },
-  isTestOverMax(num) {
+  isOverMax(val=this.state.value) {
+    // returns bool
     let { max } = this.props;
     if (max === undefined) return false;
-    if (isNaN(num)) return false;
-    return parseInt(num) > max ? true : false;
-  },
-  isOverMax() {
-    let { value } = this.state;
-    return this.isTestOverMax(value);
+    val = this.getNumber(val);
+    if (val === null) return false;
+    return val > max ? true : false;
   },
   componentWillUpdate(nextProps, nextState) {
     let { dispatcher } = this.props;
     let { value } = this.state;
     let { value:newvalue } = nextState;
-    if (this.isTestValid(newvalue) && parseInt(value) !== parseInt(newvalue)) {
-      if (dispatcher) dispatcher(parseInt(newvalue));
+    newvalue = this.getNumber(newvalue);
+    value = this.getNumber(value);
+    if (!this.isInvalid(newvalue) && value !== newvalue) {
+      console.log('dispatching newvalue of:', newvalue, 'because isInvalid:', this.isInvalid(newvalue), 'getNumber(null):', this.getNumber(null));
+      if (dispatcher) dispatcher(newvalue);
     }
   },
   render() {
@@ -329,7 +350,7 @@ var InputNumber = React.createClass({
     let cursor = dragdir == 'vertical' ? 'ns-resize' : 'ew-resize';
     let domprops_mouseable = { style:{cursor}, onWheel:this.onWheel, onMouseDown:this.onDragStart };
 
-    let isvalid = this.isValid();
+    let isinvalid = this.isInvalid();
     let isminish = this.isMinish();
     let ismaxish = this.isMaxish();
 
@@ -341,7 +362,7 @@ var InputNumber = React.createClass({
     }
 
     // component should set `wheelable#` `draggable#` or `allable#` - the input element will by default be wheelable
-    return React.createElement(component, { ref:'component', ...other, crementBy:this.crementBy, crementTo:this.crementTo, timedCrement:this.timedCrement, timedCrementStop:this.timedCrementStop, isvalid, ismaxish, isminish, domprops_text, domprops_mouseable },
+    return React.createElement(component, { ...other, crementBy:this.crementBy, crementTo:this.crementTo, timedCrement:this.timedCrement, timedCrementStop:this.timedCrementStop, isinvalid, isminish, ismaxish, domprops_text, domprops_mouseable },
       dragging ? React.createElement('div', { style:{zIndex:'2000', position:'fixed', top:'0', left:'0', width:'100vw', height:'100vh', cursor:drag_cursor}, onMouseUp:this.onDragStop, onMouseMove:this.onDrag }) : undefined // cant do the dragging && oterhwise that will print a 0 to dom // crossfile-link92828222
     );
   }
