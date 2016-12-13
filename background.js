@@ -22,23 +22,23 @@ async function getUserPreferredLocales() {
 // REQUIREMENTS:
 // all.js - findClosestLocale
 async function getClosestAvailableLocale() {
-	// gets the locale available in my extension, that is closest to the users locale
-	// returns null if nothing close
+    // gets the locale available in my extension, that is closest to the users locale
+    // returns null if nothing close
 
-	// lower case things because thats what findClosestLocale needs
-	let extlocales = await getExtLocales(); // these are the available locales
-  let userlocales = await getUserPreferredLocales();
+    // lower case things because thats what findClosestLocale needs
+    let extlocales = await getExtLocales(); // these are the available locales
+    let userlocales = await getUserPreferredLocales();
 
-	let available = extlocales;
-	let wanted = userlocales.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
+    let available = extlocales;
+    let wanted = userlocales.map(el => el.toLowerCase()); // findClosestLocale needs it lower case
 
-	return findClosestLocale(available, wanted); // returns `null` if not found
+    return findClosestLocale(available, wanted); // returns `null` if not found
 }
 
 // REQUIREMENTS:
 // _locales/[LOCALE_TAG]/ directories
 async function getExtLocales() {
-	let { xhr:{response} } = await xhrPromise('_locales/');
+	let { xhr:{response} } = await xhrPromise('/_locales/');
 
 	let locales = [];
 	let match, patt = /^.*? ([a-z\-]+)\//img;
@@ -59,8 +59,8 @@ async function getSelectedLocale(testkey) {
 	let errors = [];
 	let msgs = {}; // localized_messages `[messages.json[testkey]]: extlocale`
 	for (let extlocale of extlocales) {
-		let msg = (await xhrPromise('_locales/' + extlocale + '/messages.json', { restype:'json' })).xhr.response[testkey].message;
-    
+		let msg = (await xhrPromise('/_locales/' + extlocale + '/messages.json', { restype:'json' })).xhr.response[testkey].message;
+
 		if (msg in msgs) errors.push(`* messages.json for locale "${extlocale}" has the same "message" as locale ${msgs[msg]} for \`testkey\`("${testkey}")`);
 		else msgs[msg] = extlocale;
 	}
