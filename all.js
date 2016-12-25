@@ -53,9 +53,13 @@ async function doRetries(retry_ms, retry_cnt, callback) {
 	// total_time = retry_ms * retry_cnt
 	for (let i=0; i<retry_cnt; i++) {
 		try {
-			return await callback();
+			return await callback(retry_cnt);
 		} catch(err) {
 			console.warn('retry err:', err, 'attempt, i:', i);
+            if (err && typeof(err) == 'object' && err.STOP_RETRIES) { // STOP_RETRIES short for STOP_RETRIES_AND_THROW
+                delete err.STOP_RETRIES;
+                throw err;
+            };
 			if (i < retry_cnt-1) await promiseTimeout(retry_ms);
 			else throw err;
 		}
