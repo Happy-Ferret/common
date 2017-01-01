@@ -38,14 +38,19 @@ function dedupeCaseInsensitive(arr) {
   );
 }
 
-function deepAccessUsingString(obj, key){
-	// https://medium.com/@chekofif/using-es6-s-proxy-for-safe-object-property-access-f42fa4380b2c#.xotsyhx8t
-  return key.split('.').reduce((nestedObject, key) => {
-    if(nestedObject && key in nestedObject) {
-      return nestedObject[key];
+function deepAccessUsingString(obj, dotpath, defaultval){
+    // defaultval is returned when it is not found, by default, defaultval is undefined, set it to "THROW" if you want it to throw
+
+    let keys = dotpath.split('.');
+    let nested = obj;
+    for (let key of keys) {
+        if (nested && key in nested) nested = nested[key]; // `key in nested` this is point of concern. as `in` works with Array,Set,Map (and i dont know maybe more type) too. i am assuming that nested is always an object
+        else
+            if (defaultval === 'THROW') throw 'deepAccessUsingString: missing';
+            else return defaultval;
     }
-    return undefined;
-  }, obj);
+
+    return nested;
 }
 
 async function doRetries(retry_ms, retry_cnt, callback) {
