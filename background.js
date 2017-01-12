@@ -40,10 +40,25 @@ async function getClosestAvailableLocale() {
 async function getExtLocales() {
 	let { xhr:{response} } = await xhrPromise('/_locales/');
 
+    /* responses
+        win10 (note there is no space after DIRECTORY)
+            300: jar:file:///C:/Users/Mercurius/Documents/GitHub/Trigger/_dist1484203143189.xpi!/webextension/_locales/
+            200: filename content-length last-modified file-type
+            201: en-US/ 0 Thu,%2012%20Jan%202017%2006:38:52%20GMT DIRECTORY
+
+        ubuntu 15.01 (note there is a space after DIRECTORY)
+            300: file:///home/noi/Desktop/triig/webextension/_locales/
+            200: filename content-length last-modified file-type
+            201: en-US 0 Thu,%2012%20Jan%202017%2006:38:54%20GMT DIRECTORY
+    */
+
+    console.log('response:', response);
 	let locales = [];
-	let match, patt = /^.*? ([a-z\-]+)\//img;
-	while (match = patt.exec(response))
-		locales.push(match[1]);
+	let match, patt = /201\: (.*?)\/? 0.*?DIRECTORY/gm;
+	while (match = patt.exec(response)) {
+        console.log('match:', match);
+        locales.push(match[1]);
+    }
 
 	return locales;
 }
