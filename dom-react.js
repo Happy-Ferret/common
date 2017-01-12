@@ -367,3 +367,36 @@ var InputNumber = React.createClass({
     );
   }
 });
+
+// start - shallow stuff
+// REQUIREMENTS
+// React.addons
+// this shallow compare stuff doesn't really need DOM BUT it does
+function shallowCompare(cur, next) {
+    return React.addons.shallowCompare({props:cur}, next);
+}
+// REQUIREMENTS
+// none
+function makeShallow(obj) {
+    // make an object shallow, else return whatever it is
+    if (!obj || Object.prototype.toString.call(obj) != '[object Object]') return obj;
+    // store deferenceables into an object
+    return Object.entries(obj).reduce( (acc, [key, val]) => {
+        if (!val || ['number', 'string', 'boolean'].includes(typeof(val))) { // !val means its undefined/null/false/0
+            acc[key] = val;
+        } else {
+            acc[key] = 1; //its a thing that has a reference, so lets break that ref
+        }
+        return acc;
+    }, {});
+}
+// REQUIREMENTS
+// common/all.js
+function shallowCompareMulti(curobj, nextobj, ...dotpaths) {
+    for (dotpath of dotpaths) {
+        let cur = makeShallow(dotpath == '.' ? curobj : deepAccessUsingString(curobj, dotpath));
+        let next = makeShallow(dotpath == '.' ? nextobj : deepAccessUsingString(nextobj, dotpath));
+        if (shallowCompare(cur, next)) return true;
+    }
+}
+// end - shallow stuff
